@@ -82,15 +82,30 @@ func downloadAndSend(c tele.Context, mode string) error {
 	msg, _ := b.Send(c.Recipient(), fmt.Sprintf("⏳ Initializing %s...", mode))
 
 	outputFile := fmt.Sprintf("dl_%d_%d", u.ID, time.Now().Unix())
-	var args []string
 	if mode == "audio" {
 		outputFile += ".mp3"
-		args = []string{"-x", "--audio-format", "mp3", "-o", outputFile, "--newline", url}
 	} else {
 		outputFile += ".mp4"
+	}
+
+	defer os.Remove(outputFile)
+	defer delete(userState, u.ID)
+
+	var args []string
+	if mode == "audio" {
+		args = []string{
+			"-x",
+			"--audio-format", "mp3",
+			"--max-filesize", "50M",
+			"-o", outputFile,
+			"--newline",
+			url,
+		}
+	} else {
 		args = []string{
 			"-f", "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/best[height<=1080][vcodec^=avc1]/best",
 			"--merge-output-format", "mp4",
+			"--max-filesize", "50M",
 			"-o", outputFile,
 			"--newline",
 			url,
@@ -117,7 +132,7 @@ func downloadAndSend(c tele.Context, mode string) error {
 
 	if err := cmd.Wait(); err != nil {
 		slog.Error("yt-dlp error", "err", err)
-		b.Edit(msg, "❌ Download failed.")
+		b.Edit(msg, "❌ File exceeds 50MB limit or download failed.")
 		return err
 	}
 
@@ -130,8 +145,12 @@ func downloadAndSend(c tele.Context, mode string) error {
 		sendErr = c.Send(&tele.Video{File: tele.FromDisk(outputFile)})
 	}
 
-	os.Remove(outputFile)
-	b.Delete(msg)
-	delete(userState, u.ID)
+	if sendErr != nil {
+		slog.Error("Upload error", "err", sendErr)
+		b.Edit(msg, "❌ Telegram upload failed (Max 50MB).")
+	} else {
+		b.Delete(msg)
+	}
+
 	return sendErr
 }
