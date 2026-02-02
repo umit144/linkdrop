@@ -1,0 +1,14 @@
+services:
+  linkdrop-bot:
+    build: .
+    container_name: linkdrop-bot
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

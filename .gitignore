@@ -1,0 +1,4 @@
+.env
+dl_*
+linkdrop
+vendor/
