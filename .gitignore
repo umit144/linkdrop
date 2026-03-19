@@ -2,3 +2,4 @@
 dl_*
 linkdrop
 vendor/
+coverage.out
